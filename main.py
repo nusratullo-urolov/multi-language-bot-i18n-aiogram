@@ -6,6 +6,7 @@ from aiogram import Bot, Dispatcher, executor, types
 from aiogram.contrib.middlewares.i18n import I18nMiddleware
 from aiogram.types import ReplyKeyboardMarkup, ReplyKeyboardRemove
 from dotenv import load_dotenv
+
 load_dotenv('.env')
 from language import languages
 
@@ -24,14 +25,8 @@ LANGS = ["O'zbek 🇺🇿", "English 🇺🇸", "Pусский 🇷🇺"]
 
 class Localization(I18nMiddleware):
     async def get_user_locale(self, action: str, args: Tuple[Any]) -> str:
-        """
-        User locale getter
-        You can override the method if you want to use different way of getting user language.
-        :param action: event name
-        :param args: event arguments
-        :return: locale name
-        """
         user: types.User = types.User.get_current()
+
 
         if LANG_STORAGE.get(user.id) is None:
             LANG_STORAGE[user.id] = "O'zbek 🇺🇿"
@@ -40,21 +35,18 @@ class Localization(I18nMiddleware):
         return language
 
 
-# Setup i18n middleware
 i18n = Localization(I18N_DOMAIN, LOCALES_DIR)
 dp.middleware.setup(i18n)
 
-# Alias for gettext method
 _ = i18n.lazy_gettext
 
-
-rkm = ReplyKeyboardMarkup(one_time_keyboard=True,resize_keyboard=True)
+rkm = ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
 rkm.add("O'zbek 🇺🇿").add('Pусский 🇷🇺').add('English 🇺🇸')
 
 
 def find_language(languages, locale):
     language_codes = [list(lang.keys())[0] for lang in languages]
-    print(locale)
+    # print(locale)
     if locale in language_codes:
         return language_codes.index(locale)
 
@@ -62,6 +54,8 @@ def find_language(languages, locale):
 @dp.message_handler(commands="start")
 async def cmd_start(message: types.Message):
     await message.answer('Tilni tanlang', reply_markup=rkm)
+    user: types.User = types.User.get_current()
+    print(LANG_STORAGE.get(user.id))
 
 
 @dp.message_handler(lambda message: message.text in ["O'zbek 🇺🇿", 'Pусский 🇷🇺', 'English 🇺🇸'])
@@ -77,14 +71,17 @@ async def choose_language(message: types.Message, locale):
     await message.answer(languages[find_language(languages, locale)][locale]['start'])
 
 
+@dp.message_handler(lambda message: message.text == 'hello')
+async def hello(message: types.Message, locale):
+    await message.answer(
+        f"{languages[find_language(languages, locale)][locale]['hello']}" + ' ' + message.from_user.username)
+
+
 @dp.message_handler(commands="lang")
 async def cmd_lang(message: types.Message, locale):
     await message.answer(
         _("Your current language: {language}").format(language=locale)
     )
-
-
-
 
 
 executor.start_polling(dp)
